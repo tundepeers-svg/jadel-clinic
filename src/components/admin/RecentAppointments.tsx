@@ -22,7 +22,7 @@ export default function RecentAppointments() {
     try {
       setLoading(true);
       const data = await fetcher<{ success: boolean; data: Appointment[] }>(
-        '/api/appointments?limit=5'
+        '/api/admin/appointments?limit=5'
       );
       if (data.success) {
         setAppointments(data.data.slice(0, 5));

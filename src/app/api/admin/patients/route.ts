@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getServiceSupabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const offset = (page - 1) * limit;
 
-    const { data, error, count } = await supabase
+    // Use service role key to bypass RLS
+    const supabaseAdmin = getServiceSupabase();
+
+    const { data, error, count } = await supabaseAdmin
       .from('patients')
       .select('*, user:users(*)', { count: 'exact' })
       .order('created_at', { ascending: false })

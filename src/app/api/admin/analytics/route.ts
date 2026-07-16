@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getServiceSupabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
+    // Use service role key to bypass RLS
+    const supabaseAdmin = getServiceSupabase();
+
     // Get appointments by status
-    const { data: appointmentsByStatus } = await supabase
+    const { data: appointmentsByStatus } = await supabaseAdmin
       .from('appointments')
       .select('status')
       .then(({ data }) => {
@@ -22,7 +25,7 @@ export async function GET(request: NextRequest) {
       });
 
     // Get appointments by department
-    const { data: appointmentsByDepartment } = await supabase
+    const { data: appointmentsByDepartment } = await supabaseAdmin
       .from('appointments')
       .select('department:departments(name)')
       .then(({ data }) => {
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
       });
 
     // Get monthly appointments (last 6 months)
-    const { data: appointments } = await supabase
+    const { data: appointments } = await supabaseAdmin
       .from('appointments')
       .select('appointment_date, created_at');
 
@@ -55,7 +58,7 @@ export async function GET(request: NextRequest) {
     }, {});
 
     // Get patient growth
-    const { data: patients } = await supabase.from('patients').select('created_at');
+    const { data: patients } = await supabaseAdmin.from('patients').select('created_at');
 
     const patientGrowth = patients?.reduce((acc: any, curr: any) => {
       const month = new Date(curr.created_at).toLocaleDateString('en-US', {

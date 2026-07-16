@@ -48,7 +48,7 @@ export default function AppointmentsPage() {
     try {
       setLoading(true);
       const data = await fetcher<{ success: boolean; data: Appointment[] }>(
-        '/api/appointments'
+        '/api/admin/appointments'
       );
       if (data.success) {
         setAppointments(data.data);
