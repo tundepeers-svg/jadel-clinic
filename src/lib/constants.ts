@@ -53,9 +53,13 @@ export const ROUTES = {
   SERVICES: '/services',
   BOOK_APPOINTMENT: '/book-appointment',
   PATIENT_PORTAL: '/patient',
+  PATIENT_DASHBOARD: '/patient/dashboard',
   DOCTOR_PORTAL: '/doctor',
+  DOCTOR_DASHBOARD: '/doctor/dashboard',
   ADMIN_PORTAL: '/admin',
+  ADMIN_DASHBOARD: '/admin/dashboard',
   RECEPTION_PORTAL: '/reception',
+  RECEPTION_DASHBOARD: '/reception/dashboard',
   LOGIN: '/login',
   REGISTER: '/register',
   CONTACT: '/contact',
@@ -66,6 +70,25 @@ export const ROUTES = {
   PRIVACY: '/privacy',
   TERMS: '/terms',
 } as const;
+
+// Role-based redirect helper - returns appropriate dashboard URL for each user role
+export const getRoleBasedDashboard = (role: string): string => {
+  switch (role) {
+    case ROLES.ADMIN:
+      // TODO: Change to ROUTES.ADMIN_DASHBOARD when admin dashboard is implemented
+      return ROUTES.PATIENT_DASHBOARD;
+    case ROLES.DOCTOR:
+      // TODO: Change to ROUTES.DOCTOR_DASHBOARD when doctor dashboard is implemented
+      return ROUTES.PATIENT_DASHBOARD;
+    case ROLES.RECEPTION:
+      // TODO: Change to ROUTES.RECEPTION_DASHBOARD when reception dashboard is implemented
+      return ROUTES.PATIENT_DASHBOARD;
+    case ROLES.PATIENT:
+      return ROUTES.PATIENT_DASHBOARD;
+    default:
+      return ROUTES.PATIENT_DASHBOARD;
+  }
+};
 
 export const NAVIGATION_ITEMS = [
   { label: 'Home', href: ROUTES.HOME },

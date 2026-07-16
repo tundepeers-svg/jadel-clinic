@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/contexts/AuthContext';
-import { APP_CONFIG, ROUTES } from '@/lib/constants';
+import { APP_CONFIG, ROUTES, getRoleBasedDashboard } from '@/lib/constants';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -26,9 +26,12 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
+      const user = await login(formData.email, formData.password);
       toast.success('Welcome back!');
-      router.push(ROUTES.PATIENT_PORTAL);
+
+      // Redirect based on user role
+      const dashboardRoute = getRoleBasedDashboard(user.role);
+      router.push(dashboardRoute);
     } catch (error: any) {
       toast.error(error.message || 'Invalid email or password');
     } finally {
@@ -55,7 +58,7 @@ export default function LoginPage() {
           </Link>
 
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-          <p className="text-gray-600">Sign in to access your patient portal</p>
+          <p className="text-gray-600">Sign in to access your dashboard</p>
         </div>
 
         <Card premium>

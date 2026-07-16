@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   register: (email: string, password: string, full_name: string, role?: string) => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string): Promise<AuthUser> {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -83,7 +83,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data.user) {
         await fetchUserData(data.user.id);
+
+        // Fetch and return the user data
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (userError) throw userError;
+        return userData;
       }
+
+      throw new Error('No user data found');
     } catch (error: any) {
       throw new Error(error.message || 'Failed to login');
     }
