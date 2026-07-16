@@ -18,7 +18,7 @@ export default function FAQPage() {
       questions: [
         {
           q: 'How do I book an appointment?',
-          a: 'You can book an appointment online through our website by selecting a department, choosing a doctor, and picking an available time slot. Alternatively, you can call us at +234 800 123 4567.',
+          a: 'You can book an appointment online through our website by selecting a department, choosing a doctor, and picking an available time slot. Alternatively, you can call us at +234 704 053 4519.',
         },
         {
           q: 'Can I cancel or reschedule my appointment?',
@@ -190,9 +190,9 @@ export default function FAQPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <a href="tel:+2348001234567" className="btn-primary">
-                  Call Us: +234 800 123 4567
+                  Call Us: +234 704 053 4519
                 </a>
-                <a href="mailto:appointments@jadelclinic.demo" className="btn-secondary">
+                <a href="mailto:jadelclinic@gmail.com" className="btn-secondary">
                   Email Support
                 </a>
               </div>

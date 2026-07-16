@@ -25,9 +25,12 @@ export function Footer() {
               Your health is our priority.
             </p>
             <div className="space-y-3">
-              <div className="flex items-center space-x-3">
-                <MapPin className="w-5 h-5 text-primary-400" />
-                <span>{APP_CONFIG.location}</span>
+              <div className="flex items-start space-x-3">
+                <MapPin className="w-5 h-5 text-primary-400 mt-1 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold">JADEL CLINIC</p>
+                  <p>{APP_CONFIG.address}</p>
+                </div>
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-primary-400" />

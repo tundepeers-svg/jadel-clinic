@@ -405,10 +405,10 @@ npm run seed         # Seed database
 
 ## 📞 Contact & Support
 
-- **Website:** www.jadelclinic.demo
-- **Email:** appointments@jadelclinic.demo
-- **Phone:** +234 800 123 4567
-- **Emergency:** +234 800 999 1122
+- **Website:** www.jadelclinic.com
+- **Email:** jadelclinic@gmail.com
+- **Phone:** +234 704 053 4519
+- **Emergency:** +234 704 053 4519
 - **Location:** Lagos, Nigeria
 
 ## 📄 License

@@ -147,7 +147,7 @@ export default function ContactPage() {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+234 800 000 0000"
+                    placeholder="+234 704 000 0000"
                   />
 
                   <Input

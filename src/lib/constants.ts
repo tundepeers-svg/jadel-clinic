@@ -6,10 +6,12 @@ export const APP_CONFIG = {
   name: process.env.NEXT_PUBLIC_APP_NAME || 'JADEL CLINIC',
   tagline: process.env.NEXT_PUBLIC_APP_TAGLINE || 'Healthcare Powered by AI',
   location: process.env.NEXT_PUBLIC_APP_LOCATION || 'Lagos, Nigeria',
-  phone: process.env.NEXT_PUBLIC_PHONE || '+234 800 123 4567',
-  emergency: process.env.NEXT_PUBLIC_EMERGENCY || '+234 800 999 1122',
-  email: process.env.NEXT_PUBLIC_EMAIL || 'appointments@jadelclinic.demo',
-  website: process.env.NEXT_PUBLIC_WEBSITE || 'www.jadelclinic.demo',
+  address: '12 Admiralty Way, Lekki Phase 1, Lagos, Nigeria',
+  phone: process.env.NEXT_PUBLIC_PHONE || '+234 704 053 4519',
+  emergency: process.env.NEXT_PUBLIC_EMERGENCY || '+234 704 053 4519',
+  email: process.env.NEXT_PUBLIC_EMAIL || 'jadelclinic@gmail.com',
+  adminEmail: 'admin.jadelclinic@gmail.com',
+  website: process.env.NEXT_PUBLIC_WEBSITE || 'www.jadelclinic.com',
   url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
 };
 

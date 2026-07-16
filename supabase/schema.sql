@@ -515,7 +515,7 @@ INSERT INTO departments (name, slug, description, icon) VALUES
 -- =====================================================
 
 INSERT INTO faqs (question, answer, category, display_order) VALUES
-('How do I book an appointment?', 'You can book an appointment online through our website by selecting a department, choosing a doctor, and picking an available time slot. You can also call us at +234 800 123 4567.', 'Appointments', 1),
+('How do I book an appointment?', 'You can book an appointment online through our website by selecting a department, choosing a doctor, and picking an available time slot. You can also call us at +234 704 053 4519.', 'Appointments', 1),
 ('What are your operating hours?', 'We are open Monday to Friday from 8AM to 6PM, Saturday from 9AM to 3PM. Emergency services are available 24/7.', 'General', 2),
 ('Do I need a referral to see a specialist?', 'For most specialists, a referral is recommended but not mandatory. However, your insurance provider may require one for coverage.', 'Appointments', 3),
 ('What payment methods do you accept?', 'We accept cash, credit/debit cards, bank transfers, and most major health insurance plans.', 'Billing', 4),
