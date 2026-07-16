@@ -1,14 +1,39 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, FileText, User, Bell, Settings, LogOut, Activity } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDate, formatTime, getStatusColor, getStatusLabel } from '@/lib/utils';
+import { canAccessPatient, getUnauthorizedRedirect } from '@/lib/routeGuards';
+import { Loading } from '@/components/ui/Loading';
+import toast from 'react-hot-toast';
 
 export default function PatientDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user && !canAccessPatient(user)) {
+      toast.error('Access denied. Patients only.');
+      router.push(getUnauthorizedRedirect(user));
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loading />
+      </div>
+    );
+  }
+
+  if (!user || !canAccessPatient(user)) {
+    return null;
+  }
 
   // Mock data - in real app, fetch from API
   const stats = [

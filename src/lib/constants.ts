@@ -77,8 +77,7 @@ export const getRoleBasedDashboard = (role: string): string => {
     case ROLES.ADMIN:
       return ROUTES.ADMIN_DASHBOARD;
     case ROLES.DOCTOR:
-      // TODO: Change to ROUTES.DOCTOR_DASHBOARD when doctor dashboard is implemented
-      return ROUTES.PATIENT_DASHBOARD;
+      return ROUTES.DOCTOR_DASHBOARD;
     case ROLES.RECEPTION:
       // TODO: Change to ROUTES.RECEPTION_DASHBOARD when reception dashboard is implemented
       return ROUTES.PATIENT_DASHBOARD;
