@@ -75,8 +75,7 @@ export const ROUTES = {
 export const getRoleBasedDashboard = (role: string): string => {
   switch (role) {
     case ROLES.ADMIN:
-      // TODO: Change to ROUTES.ADMIN_DASHBOARD when admin dashboard is implemented
-      return ROUTES.PATIENT_DASHBOARD;
+      return ROUTES.ADMIN_DASHBOARD;
     case ROLES.DOCTOR:
       // TODO: Change to ROUTES.DOCTOR_DASHBOARD when doctor dashboard is implemented
       return ROUTES.PATIENT_DASHBOARD;
