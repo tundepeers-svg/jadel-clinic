@@ -32,22 +32,23 @@ export default function DoctorsPage() {
     fetchDepartments();
   }, [user]);
 
-  const fetchDoctors = async () => {
-    try {
-      setLoading(true);
-      const data = await fetcher<{ success: boolean; data: Doctor[] }>(
-        '/api/admin/doctors'
-      );
-      if (data.success) {
-        setDoctors(data.data);
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch doctors');
-    } finally {
-      setLoading(false);
-    }
-  };
+ const fetchDoctors = async () => {
+  try {
+    setLoading(true);
 
+    const data = await fetcher<{ success: boolean; data: Doctor[] }>(
+      '/api/admin/doctors'
+    );
+
+    if (data.success) {
+      setDoctors(data.data);
+    }
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to fetch doctors');
+  } finally {
+    setLoading(false);
+  }
+};
   const fetchDepartments = async () => {
     try {
       const { data, error } = await fetcher<any>('/api/departments');

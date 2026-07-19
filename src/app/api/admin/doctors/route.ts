@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { getServiceSupabase } from '@/lib/supabase';
+import { getDoctors } from '@/services/admin/doctorService';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,20 +13,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Use service role key to bypass RLS
-    const supabaseAdmin = getServiceSupabase();
+    
 
-    const { data, error } = await supabaseAdmin
-      .from('doctors')
-      .select('*, user:users(*), department:departments(*)')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 400 }
-      );
-    }
+   const data = await getDoctors();
 
     return NextResponse.json({
       success: true,

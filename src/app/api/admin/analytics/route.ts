@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { getServiceSupabase } from '@/lib/supabase';
+import { getAnalytics } from '@/services/admin/analyticsService';
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify user is authenticated and is admin
     const user = await getAuthenticatedUser();
+
     if (!user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
@@ -13,91 +13,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Use service role key to bypass RLS
-    const supabaseAdmin = getServiceSupabase();
-
-    // Get appointments by status
-    const { data: appointmentsByStatus } = await supabaseAdmin
-      .from('appointments')
-      .select('status')
-      .then(({ data }: { data: any[] | null }) => {
-        const statusCounts = data?.reduce((acc: any, curr: any) => {
-          acc[curr.status] = (acc[curr.status] || 0) + 1;
-          return acc;
-        }, {});
-
-        return {
-          data: Object.keys(statusCounts || {}).map((status) => ({
-            status,
-            count: statusCounts[status],
-          })),
-        };
-      });
-
-    // Get appointments by department
-    const { data: appointmentsByDepartment } = await supabaseAdmin
-      .from('appointments')
-      .select('department:departments(name)')
-      .then(({ data }: { data: any[] | null }) => {
-        const deptCounts = data?.reduce((acc: any, curr: any) => {
-          const deptName = curr.department?.name || 'Unassigned';
-          acc[deptName] = (acc[deptName] || 0) + 1;
-          return acc;
-        }, {});
-
-        return {
-          data: Object.keys(deptCounts || {}).map((department_name) => ({
-            department_name,
-            count: deptCounts[department_name],
-          })),
-        };
-      });
-
-    // Get monthly appointments (last 6 months)
-    const { data: appointments } = await supabaseAdmin
-      .from('appointments')
-      .select('appointment_date, created_at');
-
-    const monthlyAppointments = appointments?.reduce((acc: any, curr: any) => {
-      const month = new Date(curr.appointment_date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-      });
-      acc[month] = (acc[month] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Get patient growth
-    const { data: patients } = await supabaseAdmin.from('patients').select('created_at');
-
-    const patientGrowth = patients?.reduce((acc: any, curr: any) => {
-      const month = new Date(curr.created_at).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-      });
-      acc[month] = (acc[month] || 0) + 1;
-      return acc;
-    }, {});
-
-    const analytics = {
-  appointments_by_status: appointmentsByStatus || [],
-
-  appointments_by_department:
-    appointmentsByDepartment?.sort(
-      (a: { count: number }, b: { count: number }) =>
-        b.count - a.count
-    ) || [],
-
-  monthly_appointments: Object.keys(monthlyAppointments || {}).map((month) => ({
-    month,
-    count: monthlyAppointments[month],
-  })),
-
-  patient_growth: Object.keys(patientGrowth || {}).map((month) => ({
-    month,
-    count: patientGrowth[month],
-  })),
-};
+    const analytics = await getAnalytics();
 
     return NextResponse.json({
       success: true,
@@ -105,8 +21,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error fetching analytics:', error);
+
     return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error' },
+      {
+        success: false,
+        error: error.message || 'Internal server error',
+      },
       { status: 500 }
     );
   }
