@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { getServiceSupabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
+    // Verify user is authenticated and is admin
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     // Use service role key to bypass RLS
     const supabaseAdmin = getServiceSupabase();
 
@@ -10,7 +20,7 @@ export async function GET(request: NextRequest) {
     const { data: appointmentsByStatus } = await supabaseAdmin
       .from('appointments')
       .select('status')
-      .then(({ data }) => {
+      .then(({ data }: { data: any[] | null }) => {
         const statusCounts = data?.reduce((acc: any, curr: any) => {
           acc[curr.status] = (acc[curr.status] || 0) + 1;
           return acc;
@@ -28,7 +38,7 @@ export async function GET(request: NextRequest) {
     const { data: appointmentsByDepartment } = await supabaseAdmin
       .from('appointments')
       .select('department:departments(name)')
-      .then(({ data }) => {
+      .then(({ data }: { data: any[] | null }) => {
         const deptCounts = data?.reduce((acc: any, curr: any) => {
           const deptName = curr.department?.name || 'Unassigned';
           acc[deptName] = (acc[deptName] || 0) + 1;
@@ -70,18 +80,24 @@ export async function GET(request: NextRequest) {
     }, {});
 
     const analytics = {
-      appointments_by_status: appointmentsByStatus || [],
-      appointments_by_department:
-        appointmentsByDepartment?.sort((a, b) => b.count - a.count) || [],
-      monthly_appointments: Object.keys(monthlyAppointments || {}).map((month) => ({
-        month,
-        count: monthlyAppointments[month],
-      })),
-      patient_growth: Object.keys(patientGrowth || {}).map((month) => ({
-        month,
-        count: patientGrowth[month],
-      })),
-    };
+  appointments_by_status: appointmentsByStatus || [],
+
+  appointments_by_department:
+    appointmentsByDepartment?.sort(
+      (a: { count: number }, b: { count: number }) =>
+        b.count - a.count
+    ) || [],
+
+  monthly_appointments: Object.keys(monthlyAppointments || {}).map((month) => ({
+    month,
+    count: monthlyAppointments[month],
+  })),
+
+  patient_growth: Object.keys(patientGrowth || {}).map((month) => ({
+    month,
+    count: patientGrowth[month],
+  })),
+};
 
     return NextResponse.json({
       success: true,

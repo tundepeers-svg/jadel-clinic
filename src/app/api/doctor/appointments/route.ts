@@ -1,60 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient, getAuthenticatedUser } from '@/lib/supabase-server';
+import { getDoctorAppointments } from '@/services/doctor/appointmentService';
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const date = searchParams.get('date');
+    const patientId = searchParams.get('patient_id');
 
-    // Get authenticated user (simplified for now)
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    // Get authenticated user from cookies
+    const user = await getAuthenticatedUser();
 
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
+        { success: false, error: 'Unauthorized - Please log in' },
         { status: 401 }
       );
     }
 
-    // Get doctor record
-    const { data: doctor } = await supabase
+    // Use authenticated client to query data
+    const supabase = createClient();
+
+    // Get doctor record for authenticated user
+    const { data: doctor, error: doctorError } = await supabase
       .from('doctors')
       .select('id')
       .eq('user_id', user.id)
       .single();
+      
 
-    if (!doctor) {
+
+
+
+
+    if (doctorError || !doctor) {
       return NextResponse.json(
         { success: false, error: 'Doctor profile not found' },
         { status: 404 }
       );
     }
 
-    let query = supabase
-      .from('appointments')
-      .select(`
-        *,
-        patient:patients(*, user:users(*)),
-        department:departments(*)
-      `)
-      .eq('doctor_id', doctor.id)
-      .order('appointment_date', { ascending: false })
-      .order('appointment_time', { ascending: false });
-
-    if (date) {
-      query = query.eq('appointment_date', date);
-    }
-
-    const { data, error } = await query;
-
+    // Build query - filter by doctor's appointments
+   const { data, error } = await getDoctorAppointments(
+  doctor.id,
+  date,
+  patientId
+);
     if (error) {
       console.error('Error fetching doctor appointments:', error);
       return NextResponse.json(

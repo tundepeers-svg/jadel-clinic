@@ -3,11 +3,13 @@
 // =====================================================
 // JADEL CLINIC - Authentication Context
 // =====================================================
+// Uses cookie-based authentication compatible with SSR
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, AuthUser } from '@/types';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -24,18 +26,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
     checkUser();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
+      async (event: AuthChangeEvent, session: Session | null) => {
+        if (event === 'SIGNED_IN' && session?.user) {
           await fetchUserData(session.user.id);
-        } else {
+        } else if (event === 'SIGNED_OUT') {
           setUser(null);
         }
         setLoading(false);
+
+        // Refresh the page to update server components
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+          router.refresh();
+        }
       }
     );
 
@@ -92,6 +100,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .single();
 
         if (userError) throw userError;
+
+        // Force router refresh to update server components
+        router.refresh();
+
         return userData;
       }
 
@@ -139,6 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         await fetchUserData(data.user.id);
+        router.refresh();
       }
     } catch (error: any) {
       throw new Error(error.message || 'Failed to register');
@@ -149,6 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await supabase.auth.signOut();
       setUser(null);
+      router.refresh();
       router.push('/');
     } catch (error: any) {
       throw new Error(error.message || 'Failed to logout');
@@ -167,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
 
       await fetchUserData(user.id);
+      router.refresh();
     } catch (error: any) {
       throw new Error(error.message || 'Failed to update profile');
     }

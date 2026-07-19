@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getPatientById } from '@/services/doctor/patientService';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { getDoctorStats } from '@/services/doctor/statsService';
-import { getDoctorByUserId } from '@/services/doctor/doctorService';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     // Get authenticated user from cookies
     const user = await getAuthenticatedUser();
@@ -17,15 +19,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const doctor = await getDoctorByUserId(user.id);
-
-    const stats = await getDoctorStats(doctor.id);
+    const patient = await getPatientById(params.id);
     return NextResponse.json({
       success: true,
-      data: stats,
+      data: patient,
     });
   } catch (error: any) {
-    console.error('Error fetching doctor stats:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Internal server error' },
       { status: 500 }

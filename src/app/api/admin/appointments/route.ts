@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { getServiceSupabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
+    // Verify user is authenticated and is admin
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit') || '100');
     const status = searchParams.get('status');

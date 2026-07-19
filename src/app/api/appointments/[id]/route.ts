@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const supabase = createClient();
   try {
     const body = await request.json();
     const { status, notes, cancelled_reason } = body;
@@ -86,6 +87,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const supabase = createClient();
   try {
     const { data, error } = await supabase
       .from('appointments')

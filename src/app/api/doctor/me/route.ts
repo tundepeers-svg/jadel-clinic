@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { getDoctorStats } from '@/services/doctor/statsService';
-import { getDoctorByUserId } from '@/services/doctor/doctorService';
+import { getDoctorProfile } from '@/services/doctor/doctorService';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Get current doctor's profile
+ * Uses session from cookie to identify doctor
+ */
 export async function GET(request: NextRequest) {
   try {
     // Get authenticated user from cookies
@@ -12,20 +15,19 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized - Please log in' },
+        { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const doctor = await getDoctorByUserId(user.id);
+    const doctor = await getDoctorProfile(user.id);
 
-    const stats = await getDoctorStats(doctor.id);
     return NextResponse.json({
       success: true,
-      data: stats,
+      data: doctor,
     });
   } catch (error: any) {
-    console.error('Error fetching doctor stats:', error);
+    console.error('Error fetching doctor profile:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Internal server error' },
       { status: 500 }

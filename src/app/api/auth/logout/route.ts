@@ -1,26 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServiceSupabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-server';
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const { data, error } = await getServiceSupabase()
-      .from('departments')
-      .select('*')
-      .eq('is_active', true)
-      .order('name', { ascending: true });
+    const supabase = createClient();
+
+    const { error } = await supabase.auth.signOut();
 
     if (error) {
+      console.error('Logout error:', error);
       return NextResponse.json(
         { success: false, error: error.message },
-        { status: 400 }
+        { status: 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      data,
+      message: 'Logged out successfully',
     });
   } catch (error: any) {
+    console.error('Logout route error:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Internal server error' },
       { status: 500 }

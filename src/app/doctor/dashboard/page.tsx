@@ -96,6 +96,7 @@ export default function DoctorDashboard() {
   if (!user || user.role !== 'doctor') {
     return null;
   }
+  console.log('Doctor user:', user);
 
   const statsCards = [
     {
@@ -129,8 +130,13 @@ export default function DoctorDashboard() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Doctor Dashboard</h1>
-          <p className="text-gray-600 mt-1">Welcome back, Dr. {user?.full_name}</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+  Doctor Dashboard
+</h1>
+
+<p className="text-gray-600 mt-1">
+  Welcome back, {user?.full_name}
+</p>
         </div>
 
         {/* Stats Grid */}

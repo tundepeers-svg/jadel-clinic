@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { getDoctorStats } from '@/services/doctor/statsService';
-import { getDoctorByUserId } from '@/services/doctor/doctorService';
+import { getMedicalRecords } from '@/services/doctor/medicalRecordService';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get authenticated user from cookies
     const user = await getAuthenticatedUser();
 
     if (!user) {
@@ -17,17 +15,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const doctor = await getDoctorByUserId(user.id);
+    const searchParams = request.nextUrl.searchParams;
+    const patientId = searchParams.get('patient_id');
 
-    const stats = await getDoctorStats(doctor.id);
+    const data = await getMedicalRecords(patientId);
+
     return NextResponse.json({
       success: true,
-      data: stats,
+      data,
     });
   } catch (error: any) {
-    console.error('Error fetching doctor stats:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error' },
+      {
+        success: false,
+        error: error.message || 'Internal server error',
+      },
       { status: 500 }
     );
   }

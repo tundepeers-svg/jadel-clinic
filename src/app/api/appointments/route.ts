@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getServiceSupabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const date = searchParams.get('date');
 
-    let query = supabase
+    let query = getServiceSupabase()
       .from('appointments')
       .select(`
         *,
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: existingAppointment } = await supabase
+    const { data: existingAppointment } = await getServiceSupabase()
       .from('appointments')
       .select('id')
       .eq('doctor_id', doctor_id)
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     const [hours, minutes] = appointment_time.split(':');
     const endTime = `${String(parseInt(hours) + (parseInt(minutes) === 30 ? 1 : 0)).padStart(2, '0')}:${parseInt(minutes) === 30 ? '00' : '30'}`;
 
-    const { data: appointment, error } = await supabase
+    const { data: appointment, error } = await getServiceSupabase()
       .from('appointments')
       .insert({
         patient_id,
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await supabase.from('notifications').insert({
+    await getServiceSupabase().from('notifications').insert({
       user_id: patient_id,
       title: 'Appointment Booked',
       message: `Your appointment with ${appointment.doctor?.user?.full_name} on ${appointment_date} at ${appointment_time} has been booked and is pending approval.`,
