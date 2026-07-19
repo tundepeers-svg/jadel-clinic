@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { getServiceSupabase } from '@/lib/supabase';
+import { getAppointments } from '@/services/admin/appointmentService';
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify user is authenticated and is admin
     const user = await getAuthenticatedUser();
+
     if (!user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
@@ -14,46 +14,23 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '100');
+    const limit = Number(searchParams.get('limit') ?? '100');
     const status = searchParams.get('status');
 
-    // Use service role key to bypass RLS for admin operations
-    const supabaseAdmin = getServiceSupabase();
-
-    let query = supabaseAdmin
-      .from('appointments')
-      .select(`
-        *,
-        patient:patients(*, user:users(*)),
-        doctor:doctors(*, user:users(*), department:departments(*)),
-        department:departments(*)
-      `)
-      .order('appointment_date', { ascending: false })
-      .order('appointment_time', { ascending: false })
-      .limit(limit);
-
-    if (status) {
-      query = query.eq('status', status);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('Error fetching admin appointments:', error);
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 400 }
-      );
-    }
+    const appointments = await getAppointments(limit, status);
 
     return NextResponse.json({
       success: true,
-      data: data || [],
+      data: appointments,
     });
   } catch (error: any) {
     console.error('Error in admin appointments route:', error);
+
     return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error' },
+      {
+        success: false,
+        error: error.message || 'Internal server error',
+      },
       { status: 500 }
     );
   }
