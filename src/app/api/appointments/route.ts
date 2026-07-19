@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  sendAppointmentConfirmation,
+} from '@/lib/email';
 import { getServiceSupabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
@@ -122,6 +125,23 @@ export async function POST(request: NextRequest) {
       type: 'appointment',
       link: '/patient/appointments',
     });
+
+try {
+console.log("===== APPOINTMENT DATA =====");
+console.log(JSON.stringify(appointment, null, 2));
+console.log("============================");
+  await sendAppointmentConfirmation({
+    patient_name: appointment.patient?.user?.full_name || 'Patient',
+    patient_email: appointment.patient?.user?.email,
+    doctor_name: appointment.doctor?.user?.full_name || 'Doctor',
+    department_name: appointment.department?.name || 'General',
+    appointment_date: appointment.appointment_date,
+    appointment_time: appointment.appointment_time,
+    reason: appointment.reason,
+  });
+} catch (emailError) {
+  console.error('Failed to send appointment confirmation email:', emailError);
+}
 
     return NextResponse.json({
       success: true,

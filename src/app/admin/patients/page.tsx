@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function PatientsPage() {
-  const { user } = useAuth();
+ const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,13 +24,20 @@ export default function PatientsPage() {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    if (user?.role !== 'admin') {
-      router.push('/');
-      return;
-    }
-    fetchPatients();
-  }, [currentPage, user]);
+  if (authLoading) return;
 
+  if (!user) {
+    router.push('/');
+    return;
+  }
+
+  if (user.role !== 'admin') {
+    router.push(`/${user.role}/dashboard`);
+    return;
+  }
+
+  fetchPatients();
+}, [authLoading, user, currentPage]);
   const fetchPatients = async () => {
     try {
       setLoading(true);

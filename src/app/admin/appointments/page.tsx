@@ -24,7 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function AppointmentsPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,28 +37,38 @@ export default function AppointmentsPage() {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    if (user?.role !== 'admin') {
-      router.push('/');
-      return;
-    }
-    fetchAppointments();
-  }, [user]);
+  if (authLoading) return;
 
-  const fetchAppointments = async () => {
-    try {
-      setLoading(true);
-      const data = await fetcher<{ success: boolean; data: Appointment[] }>(
-        '/api/admin/appointments'
-      );
-      if (data.success) {
-        setAppointments(data.data);
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch appointments');
-    } finally {
-      setLoading(false);
+  if (!user) {
+    router.push('/');
+    return;
+  }
+
+  if (user.role !== 'admin') {
+    router.push(`/${user.role}/dashboard`);
+    return;
+  }
+
+  fetchAppointments();
+}, [authLoading, user, currentPage]);
+
+const fetchAppointments = async () => {
+  try {
+    setLoading(true);
+
+    const data = await fetcher<{ success: boolean; data: Appointment[] }>(
+      '/api/admin/appointments'
+    );
+
+    if (data.success) {
+      setAppointments(data.data);
     }
-  };
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to fetch appointments');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSearch = debounce((query: string) => {
     setSearchQuery(query);

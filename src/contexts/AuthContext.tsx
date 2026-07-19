@@ -33,6 +33,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
+
+console.log('🔔 Auth Event:', event);
+console.log('🔔 Session:', session);
+
         if (event === 'SIGNED_IN' && session?.user) {
           await fetchUserData(session.user.id);
         } else if (event === 'SIGNED_OUT') {
@@ -53,17 +57,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function checkUser() {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await fetchUserData(session.user.id);
-      }
-    } catch (error) {
-      console.error('Error checking user:', error);
-    } finally {
-      setLoading(false);
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    console.log('🔍 checkUser session:', session);
+
+    if (session?.user) {
+      await fetchUserData(session.user.id);
     }
+  } catch (error) {
+    console.error('Error checking user:', error);
+  } finally {
+    setLoading(false);
   }
+}
 
   async function fetchUserData(userId: string) {
     try {
@@ -74,7 +83,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (error) throw error;
-      setUser(data);
+      console.log('✅ User Loaded:', data);
+
+setUser(data);
     } catch (error) {
       console.error('Error fetching user data:', error);
     }

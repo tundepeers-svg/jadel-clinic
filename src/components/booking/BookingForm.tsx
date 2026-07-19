@@ -1,11 +1,11 @@
 'use client';
-
-import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@/lib/supabase';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, User, FileText, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { MOCK_DEPARTMENTS, MOCK_DOCTORS } from '@/lib/mockData';
 import { formatTime, getTimeSlots } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -14,8 +14,12 @@ interface BookingFormProps {
 }
 
 export function BookingForm({ onSuccess }: BookingFormProps) {
+const { user } = useAuth();
+const supabase = createClient();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     department_id: '',
     doctor_id: '',
@@ -24,9 +28,46 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
     reason: '',
   });
 
-  const selectedDepartment = MOCK_DEPARTMENTS.find(d => d.id === formData.department_id);
-  const departmentDoctors = MOCK_DOCTORS.filter(d => d.department_id === formData.department_id);
-  const selectedDoctor = MOCK_DOCTORS.find(d => d.id === formData.doctor_id);
+  const loadData = async () => {
+    try {
+      // Load departments
+      const { data: departmentsData, error: departmentsError } = await supabase
+        .from('departments')
+        .select('*')
+        .order('name');
+
+      if (departmentsError) throw departmentsError;
+      setDepartments(departmentsData || []);
+
+      // Load doctors with their user information
+      const { data: doctorsData, error: doctorsError } = await supabase
+        .from('doctors')
+        .select('*, user:users(*)')
+        .order('user(full_name)');
+
+      if (doctorsError) throw doctorsError;
+      setDoctors(doctorsData || []);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Failed to load departments and doctors');
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+const selectedDepartment = departments.find(
+  d => d.id === formData.department_id
+);
+
+const departmentDoctors = doctors.filter(
+  d => d.department_id === formData.department_id
+);
+
+const selectedDoctor = doctors.find(
+  d => d.id === formData.doctor_id
+);
 
   const timeSlots = getTimeSlots('08:00', '17:30', 30);
 
@@ -65,12 +106,63 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
 
     setLoading(true);
 
-    try {
-      // In a real app, this would call your API
-      await new Promise(resolve => setTimeout(resolve, 1500));
+if (!user) {
+  throw new Error("Please log in first.");
+}
 
-      toast.success('Appointment booked successfully! Check your email for confirmation.');
-      onSuccess?.();
+const { data: patient, error: patientError } = await supabase
+  .from("patients")
+  .select("id")
+  .eq("user_id", user.id)
+  .single();
+console.log("Logged in user:", user);
+console.log("Patient:", patient);
+console.log("Patient Error:", patientError);
+if (patientError || !patient) {
+  throw new Error("Patient record not found.");
+}
+
+    try {
+      const patientId = localStorage.getItem("patient_id"); // or get it from your auth context
+console.log("BOOKING DATA", {
+  patient_id: patient.id,
+  doctor_id: formData.doctor_id,
+  department_id: formData.department_id,
+  appointment_date: formData.appointment_date,
+  appointment_time: formData.appointment_time,
+  reason: formData.reason,
+});
+console.log("BOOKING DATA", {
+  patient_id: patient?.id,
+  doctor_id: formData.doctor_id,
+  department_id: formData.department_id,
+  appointment_date: formData.appointment_date,
+  appointment_time: formData.appointment_time,
+  reason: formData.reason,
+});
+const response = await fetch("/api/appointments", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    patient_id: patient.id,
+    doctor_id: formData.doctor_id,
+    department_id: formData.department_id,
+    appointment_date: formData.appointment_date,
+    appointment_time: formData.appointment_time,
+    reason: formData.reason,
+  }),
+});
+
+const result = await response.json();
+
+if (!response.ok) {
+  throw new Error(result.error || "Failed to book appointment");
+}
+
+toast.success("Appointment booked successfully! Check your email for confirmation.");
+onSuccess?.();
     } catch (error) {
       toast.error('Failed to book appointment. Please try again.');
     } finally {
@@ -129,7 +221,7 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
               <div>
                 <h2 className="text-2xl font-bold mb-6">Select Department</h2>
                 <div className="grid md:grid-cols-2 gap-4">
-                  {MOCK_DEPARTMENTS.map((dept) => (
+                  {departments.map((dept) => (
                     <button
                       key={dept.id}
                       onClick={() => setFormData({ ...formData, department_id: dept.id, doctor_id: '' })}
