@@ -1,9 +1,18 @@
-'use client';
+// =====================================================
+// ALTERNATIVE AUTHENTICATION CONTEXT (API-based)
+// =====================================================
+// This file shows how to use the API route for registration
+// instead of the database trigger approach.
+//
+// To use this:
+// 1. Rename this file to AuthContext.tsx
+// 2. Rename the current AuthContext.tsx to AuthContext.old.tsx
+// 3. Make sure the API route exists at src/app/api/auth/register/route.ts
+//
+// NOTE: The database trigger approach is recommended as it's simpler
+// and doesn't require changes to the client code.
 
-// =====================================================
-// JADEL CLINIC - Authentication Context
-// =====================================================
-// Uses cookie-based authentication compatible with SSR
+'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, AuthUser } from '@/types';
@@ -25,14 +34,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
- const router = useRouter();
-
-const originalPush = router.push;
-
-router.push = ((href: string, ...args: any[]) => {
-  console.trace('router.push called:', href);
-  return originalPush.call(router, href, ...args);
-}) as typeof router.push;
+  const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
@@ -40,9 +42,8 @@ router.push = ((href: string, ...args: any[]) => {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
-
-console.log('🔔 Auth Event:', event);
-console.log('🔔 Session:', session);
+        console.log('🔔 Auth Event:', event);
+        console.log('🔔 Session:', session);
 
         if (event === 'SIGNED_IN' && session?.user) {
           await fetchUserData(session.user.id);
@@ -64,22 +65,22 @@ console.log('🔔 Session:', session);
   }, []);
 
   async function checkUser() {
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    console.log('🔍 checkUser session:', session);
+      console.log('🔍 checkUser session:', session);
 
-    if (session?.user) {
-      await fetchUserData(session.user.id);
+      if (session?.user) {
+        await fetchUserData(session.user.id);
+      }
+    } catch (error) {
+      console.error('Error checking user:', error);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Error checking user:', error);
-  } finally {
-    setLoading(false);
   }
-}
 
   async function fetchUserData(userId: string) {
     try {
@@ -92,7 +93,7 @@ console.log('🔔 Session:', session);
       if (error) throw error;
       console.log('✅ User Loaded:', data);
 
-setUser(data);
+      setUser(data);
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
@@ -131,46 +132,31 @@ setUser(data);
     }
   }
 
+  // API-based registration (uses server-side service role)
   async function register(email: string, password: string, full_name: string, role: string = 'patient') {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name,
-            role,
-          },
+      // Call the registration API endpoint
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          email,
+          password,
+          full_name,
+          role,
+        }),
       });
 
-      if (error) throw error;
+      const result = await response.json();
 
-      if (data.user) {
-        const { error: userError } = await supabase
-          .from('users')
-          .insert({
-            id: data.user.id,
-            email,
-            full_name,
-            role,
-          });
-
-        if (userError) throw userError;
-
-        if (role === 'patient') {
-          const { error: patientError } = await supabase
-            .from('patients')
-            .insert({
-              user_id: data.user.id,
-            });
-
-          if (patientError) throw patientError;
-        }
-
-        await fetchUserData(data.user.id);
-        router.refresh();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to register');
       }
+
+      // Now sign in the user
+      await login(email, password);
     } catch (error: any) {
       throw new Error(error.message || 'Failed to register');
     }

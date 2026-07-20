@@ -191,12 +191,14 @@ export async function sendAppointmentConfirmation(data: AppointmentEmailData): P
   `;
 
   try {
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: data.patient_email,
-      subject: `Appointment Confirmation - ${APP_CONFIG.name}`,
-      html: getEmailTemplate(content),
-    });
+    const result = await resend.emails.send({
+  from: FROM_EMAIL,
+  to: data.patient_email,
+  subject: `Appointment Confirmation - ${APP_CONFIG.name}`,
+  html: getEmailTemplate(content),
+});
+
+console.log("RESEND RESULT:", result);
   } catch (error) {
     console.error('Error sending appointment confirmation email:', error);
   }
