@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supabase Query Test</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #4ec9b0;
+    }
+    .test-section {
+      background: #252526;
+      padding: 20px;
+      margin: 20px 0;
+      border-left: 4px solid #4ec9b0;
+    }
+    .test-section h2 {
+      color: #dcdcaa;
+      margin-top: 0;
+    }
+    pre {
+      background: #1e1e1e;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      border: 1px solid #3e3e42;
+    }
+    .success {
+      color: #4ec9b0;
+    }
+    .error {
+      color: #f48771;
+    }
+    .warning {
+      color: #dcdcaa;
+    }
+    button {
+      background: #0e639c;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #1177bb;
+    }
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    .loading {
+      display: inline-block;
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Supabase Doctor Query Diagnostic Tool</h1>
+    <p>This tool tests the exact query used in BookingForm to diagnose the root cause.</p>
+
+    <button id="runTests" onclick="runAllTests()">▶️ Run All Tests</button>
+    <span id="loading" class="loading" style="display:none;">⏳ Running tests...</span>
+
+    <div id="results"></div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    // Get Supabase credentials from environment
+    // In production, these should be in .env but for testing we'll prompt
+    let supabaseUrl = localStorage.getItem('SUPABASE_URL');
+    let supabaseKey = localStorage.getItem('SUPABASE_ANON_KEY');
+
+    if (!supabaseUrl || !supabaseKey) {
+      supabaseUrl = prompt('Enter NEXT_PUBLIC_SUPABASE_URL:');
+      supabaseKey = prompt('Enter NEXT_PUBLIC_SUPABASE_ANON_KEY:');
+      if (supabaseUrl && supabaseKey) {
+        localStorage.setItem('SUPABASE_URL', supabaseUrl);
+        localStorage.setItem('SUPABASE_ANON_KEY', supabaseKey);
+      }
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    window.runAllTests = async function() {
+      const resultsDiv = document.getElementById('results');
+      const loadingSpan = document.getElementById('loading');
+      const button = document.getElementById('runTests');
+
+      resultsDiv.innerHTML = '';
+      loadingSpan.style.display = 'inline';
+      button.disabled = true;
+
+      try {
+        await test1_departments();
+        await test2_doctors_no_join();
+        await test3_doctors_with_join_original();
+        await test4_doctors_with_join_simplified();
+        await test5_users_direct();
+        await showDiagnosis();
+      } catch (err) {
+        addResult('❌ CRITICAL ERROR', 'error', err.message);
+      } finally {
+        loadingSpan.style.display = 'none';
+        button.disabled = false;
+      }
+    };
+
+    const results = {
+      departments: null,
+      doctors_no_join: null,
+      doctors_with_join_original: null,
+      doctors_with_join_simplified: null,
+      users_direct: null
+    };
+
+    function addResult(title, type, content) {
+      const resultsDiv = document.getElementById('results');
+      const section = document.createElement('div');
+      section.className = 'test-section';
+
+      const titleEl = document.createElement('h2');
+      titleEl.textContent = title;
+      titleEl.className = type;
+
+      const pre = document.createElement('pre');
+      pre.textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+
+      section.appendChild(titleEl);
+      section.appendChild(pre);
+      resultsDiv.appendChild(section);
+    }
+
+    async function test1_departments() {
+      addResult('TEST 1: Departments Query', 'warning', 'Running...');
+
+      const { data, error } = await supabase
+        .from('departments')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      results.departments = { data, error, count: data?.length || 0 };
+
+      const status = error ? '❌ ERROR' : `✓ SUCCESS (${data?.length || 0} records)`;
+      const output = error ? error : {
+        count: data?.length,
+        sample: data?.[0]
+      };
+
+      addResult(`TEST 1: Departments - ${status}`, error ? 'error' : 'success', output);
+    }
+
+    async function test2_doctors_no_join() {
+      addResult('TEST 2: Doctors Without Join', 'warning', 'Running...');
+
+      const { data, error } = await supabase
+        .from('doctors')
+        .select('*')
+        .eq('is_available', true);
+
+      results.doctors_no_join = { data, error, count: data?.length || 0 };
+
+      const status = error ? '❌ ERROR' : `✓ SUCCESS (${data?.length || 0} records)`;
+      const output = error ? error : {
+        count: data?.length,
+        sample: data?.[0]
+      };
+
+      addResult(`TEST 2: Doctors (no join) - ${status}`, error ? 'error' : 'success', output);
+    }
+
+    async function test3_doctors_with_join_original() {
+      addResult('TEST 3: Doctors With Join (user:users syntax)', 'warning', 'Running...');
+
+      const { data, error } = await supabase
+        .from('doctors')
+        .select('*, user:users(*)')
+        .eq('is_available', true)
+        .limit(3);
+
+      results.doctors_with_join_original = { data, error, count: data?.length || 0 };
+
+      const status = error ? '❌ ERROR' : `✓ SUCCESS (${data?.length || 0} records)`;
+
+      let output;
+      if (error) {
+        output = error;
+      } else if (data && data.length > 0) {
+        output = {
+          count: data.length,
+          user_field_check: {
+            'user exists?': data[0].user !== undefined,
+            'user is null?': data[0].user === null,
+            'user has data?': data[0].user && Object.keys(data[0].user).length > 0,
+            'user.full_name': data[0].user?.full_name || 'NULL'
+          },
+          sample: data[0]
+        };
+      } else {
+        output = { count: 0, message: 'No data returned' };
+      }
+
+      addResult(
+        `TEST 3: Doctors with join (original) - ${status}`,
+        error ? 'error' : (data?.[0]?.user ? 'success' : 'warning'),
+        output
+      );
+    }
+
+    async function test4_doctors_with_join_simplified() {
+      addResult('TEST 4: Doctors With Join (user syntax)', 'warning', 'Running...');
+
+      const { data, error } = await supabase
+        .from('doctors')
+        .select('*, user(*)')
+        .eq('is_available', true)
+        .limit(3);
+
+      results.doctors_with_join_simplified = { data, error, count: data?.length || 0 };
+
+      const status = error ? '❌ ERROR' : `✓ SUCCESS (${data?.length || 0} records)`;
+
+      let output;
+      if (error) {
+        output = error;
+      } else if (data && data.length > 0) {
+        output = {
+          count: data.length,
+          user_field_check: {
+            'user exists?': data[0].user !== undefined,
+            'user is null?': data[0].user === null,
+            'user has data?': data[0].user && Object.keys(data[0].user).length > 0,
+            'user.full_name': data[0].user?.full_name || 'NULL'
+          },
+          sample: data[0]
+        };
+      } else {
+        output = { count: 0, message: 'No data returned' };
+      }
+
+      addResult(
+        `TEST 4: Doctors with join (simplified) - ${status}`,
+        error ? 'error' : (data?.[0]?.user ? 'success' : 'warning'),
+        output
+      );
+    }
+
+    async function test5_users_direct() {
+      addResult('TEST 5: Direct Users Query (RLS Test)', 'warning', 'Running...');
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('role', 'doctor');
+
+      results.users_direct = { data, error, count: data?.length || 0 };
+
+      const status = error ? '❌ ERROR' : `✓ SUCCESS (${data?.length || 0} records)`;
+      const output = error ? error : {
+        count: data?.length,
+        sample: data?.[0],
+        message: data?.length === 0 ? 'RLS IS BLOCKING ACCESS' : 'RLS allows access'
+      };
+
+      addResult(`TEST 5: Users (direct) - ${status}`, error ? 'error' : 'success', output);
+    }
+
+    async function showDiagnosis() {
+      const dept = results.departments;
+      const docs_no_join = results.doctors_no_join;
+      const docs_join_orig = results.doctors_with_join_original;
+      const docs_join_simp = results.doctors_with_join_simplified;
+      const users = results.users_direct;
+
+      let diagnosis = '🔍 DIAGNOSIS\n\n';
+
+      // Check 1: Database seeded?
+      if (dept.count === 0 || docs_no_join.count === 0) {
+        diagnosis += '❌ ROOT CAUSE: Database Not Seeded\n';
+        diagnosis += 'Evidence: No departments or doctors in database\n';
+        diagnosis += 'Fix: Run seed script: node scripts/seed.js\n';
+      }
+      // Check 2: Query syntax error?
+      else if (docs_join_orig.error || docs_join_simp.error) {
+        diagnosis += '❌ ROOT CAUSE: Query Syntax Error\n';
+        diagnosis += `Evidence: ${docs_join_orig.error?.message || docs_join_simp.error?.message}\n`;
+        diagnosis += 'Fix: Verify relationship alias is correct\n';
+      }
+      // Check 3: RLS blocking?
+      else if (docs_join_orig.data?.[0]?.user === null || docs_join_simp.data?.[0]?.user === null) {
+        diagnosis += '❌ ROOT CAUSE: RLS Policy Blocking User Profiles\n\n';
+        diagnosis += 'Evidence:\n';
+        diagnosis += `  - Doctors query returns ${docs_no_join.count} records ✓\n`;
+        diagnosis += `  - Doctors with join returns data but user=null ✗\n`;
+        diagnosis += `  - Direct users query returns ${users.count} records\n`;
+
+        if (users.count === 0) {
+          diagnosis += '\n✓ CONFIRMED: RLS is blocking users table access\n';
+          diagnosis += '\nCurrent RLS Policy:\n';
+          diagnosis += 'CREATE POLICY users_select_own ON users\n';
+          diagnosis += '    FOR SELECT USING (auth.uid() = id);\n';
+          diagnosis += '\nThis blocks reading other users profiles during joins.\n';
+          diagnosis += '\nFix: Apply migration 002_fix_doctor_user_rls.sql\n';
+        } else {
+          diagnosis += '\n⚠️  Users query works, but join returns null.\n';
+          diagnosis += 'This suggests a different issue.\n';
+        }
+      }
+      // Check 4: Everything works!
+      else if (docs_join_orig.data?.[0]?.user || docs_join_simp.data?.[0]?.user) {
+        diagnosis += '✓ QUERY WORKS CORRECTLY!\n';
+        diagnosis += `  - Departments: ${dept.count} records\n`;
+        diagnosis += `  - Doctors: ${docs_no_join.count} records\n`;
+        diagnosis += `  - User profiles populated: ✓\n`;
+        diagnosis += '\nNo fix needed - the query is working as expected.\n';
+      }
+
+      addResult('🎯 FINAL DIAGNOSIS', 'success', diagnosis);
+    }
+  </script>
+</body>
+</html>

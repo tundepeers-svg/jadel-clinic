@@ -26,6 +26,7 @@ const supabase = createClient();
     appointment_date: '',
     appointment_time: '',
     reason: '',
+    email: '',
   });
 
   const loadData = async () => {
@@ -34,19 +35,37 @@ const supabase = createClient();
       const { data: departmentsData, error: departmentsError } = await supabase
         .from('departments')
         .select('*')
+        .eq('is_active', true)
         .order('name');
 
-      if (departmentsError) throw departmentsError;
+
+      if (departmentsError) {
+        console.error('Departments error:', departmentsError);
+        throw departmentsError;
+      }
       setDepartments(departmentsData || []);
 
       // Load doctors with their user information
+      // Using explicit FK constraint name to ensure PostgREST finds the relationship
+      // FK: doctors.user_id -> users.id (constraint: doctors_user_id_fkey)
       const { data: doctorsData, error: doctorsError } = await supabase
         .from('doctors')
-        .select('*, user:users(*)')
-        .order('user(full_name)');
+        .select('*, users!doctors_user_id_fkey(*)')
+        .eq('is_available', true);
+       
+      if (doctorsError) {
+        console.error('Doctors error:', doctorsError);
+        throw doctorsError;
+      }
 
-      if (doctorsError) throw doctorsError;
-      setDoctors(doctorsData || []);
+      // Sort doctors by user full_name on client side
+      const sortedDoctors = (doctorsData || []).sort((a, b) => {
+        const nameA = a.user?.full_name || '';
+        const nameB = b.user?.full_name || '';
+        return nameA.localeCompare(nameB);
+      });
+
+      setDoctors(sortedDoctors);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load departments and doctors');
@@ -55,7 +74,11 @@ const supabase = createClient();
 
   useEffect(() => {
     loadData();
-  }, []);
+    // Pre-fill email if user is logged in
+    if (user?.email) {
+      setFormData(prev => ({ ...prev, email: user.email || '' }));
+    }
+  }, [user]);
 
 const selectedDepartment = departments.find(
   d => d.id === formData.department_id
@@ -91,6 +114,10 @@ const selectedDoctor = doctors.find(
       toast.error('Please select date and time');
       return;
     }
+    if (step === 3 && !formData.email?.trim()) {
+      toast.error('Please provide an email address');
+      return;
+    }
     setStep(step + 1);
   };
 
@@ -98,6 +125,11 @@ const selectedDoctor = doctors.find(
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.email?.trim()) {
+      toast.error('Please provide an email address');
+      return;
+    }
 
     if (!formData.reason.trim()) {
       toast.error('Please provide a reason for visit');
@@ -123,23 +155,6 @@ if (patientError || !patient) {
 }
 
     try {
-      const patientId = localStorage.getItem("patient_id"); // or get it from your auth context
-console.log("BOOKING DATA", {
-  patient_id: patient.id,
-  doctor_id: formData.doctor_id,
-  department_id: formData.department_id,
-  appointment_date: formData.appointment_date,
-  appointment_time: formData.appointment_time,
-  reason: formData.reason,
-});
-console.log("BOOKING DATA", {
-  patient_id: patient?.id,
-  doctor_id: formData.doctor_id,
-  department_id: formData.department_id,
-  appointment_date: formData.appointment_date,
-  appointment_time: formData.appointment_time,
-  reason: formData.reason,
-});
 const response = await fetch("/api/appointments", {
   method: "POST",
   headers: {
@@ -152,6 +167,7 @@ const response = await fetch("/api/appointments", {
     appointment_date: formData.appointment_date,
     appointment_time: formData.appointment_time,
     reason: formData.reason,
+    email: formData.email,
   }),
 });
 
@@ -259,12 +275,12 @@ onSuccess?.();
                     >
                       <div className="flex items-start space-x-4">
                         <img
-                          src={doctor.user?.avatar_url || ''}
+                         src={doctor.users?.avatar_url || ''}
                           alt={doctor.user?.full_name || 'Doctor'}
                           className="w-16 h-16 rounded-full"
                         />
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900">{doctor.user?.full_name}</h3>
+                          <h3 className="font-semibold text-gray-900"> {doctor.users?.full_name}</h3> 
                           <p className="text-sm text-gray-600">{doctor.specialization}</p>
                           <p className="text-xs text-gray-500 mt-1">{doctor.experience_years} years experience</p>
                         </div>
@@ -280,8 +296,23 @@ onSuccess?.();
               <div>
                 <h2 className="text-2xl font-bold mb-2">Select Date & Time</h2>
                 <p className="text-gray-600 mb-6">
-                  Doctor: <span className="font-semibold text-primary-600">{selectedDoctor?.user?.full_name}</span>
+                  Doctor: <span className="font-semibold text-primary-600">{selectedDoctor?.users?.full_name}</span>
                 </p>
+
+                <div className="mb-6">
+                  <label className="label">Email Address *</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="your@email.com"
+                    className="input"
+                    required
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Appointment confirmation will be sent to this email
+                  </p>
+                </div>
 
                 <div className="mb-6">
                   <label className="label">Appointment Date</label>
@@ -330,6 +361,7 @@ onSuccess?.();
                     <p><strong>Doctor:</strong> {selectedDoctor?.user?.full_name}</p>
                     <p><strong>Date:</strong> {formData.appointment_date}</p>
                     <p><strong>Time:</strong> {formatTime(formData.appointment_time)}</p>
+                    <p><strong>Email:</strong> {formData.email}</p>
                   </div>
                 </div>
 

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test All Relationship Syntaxes</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #ddd; }
+    .test { background: #252526; padding: 15px; margin: 10px 0; border-left: 4px solid #555; }
+    .test.success { border-color: #4ec9b0; }
+    .test.error { border-color: #f48771; }
+    .test.partial { border-color: #dcdcaa; }
+    h2 { margin: 0 0 10px 0; }
+    pre { background: #1e1e1e; padding: 10px; overflow-x: auto; font-size: 12px; }
+    button { background: #0e639c; color: white; border: none; padding: 10px 20px; cursor: pointer; font-size: 16px; }
+    button:disabled { background: #555; }
+    .summary { background: #252526; padding: 20px; margin: 20px 0; border: 2px solid #4ec9b0; }
+  </style>
+</head>
+<body>
+  <h1>🔬 Systematic Relationship Syntax Test</h1>
+  <button id="runBtn" onclick="runTests()">▶️ Run All Tests</button>
+  <div id="results"></div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    let supabaseUrl = localStorage.getItem('SUPABASE_URL');
+    let supabaseKey = localStorage.getItem('SUPABASE_ANON_KEY');
+
+    if (!supabaseUrl || !supabaseKey) {
+      supabaseUrl = prompt('Enter NEXT_PUBLIC_SUPABASE_URL:');
+      supabaseKey = prompt('Enter NEXT_PUBLIC_SUPABASE_ANON_KEY:');
+      if (supabaseUrl && supabaseKey) {
+        localStorage.setItem('SUPABASE_URL', supabaseUrl);
+        localStorage.setItem('SUPABASE_ANON_KEY', supabaseKey);
+      }
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    window.runTests = async function() {
+      const btn = document.getElementById('runBtn');
+      const results = document.getElementById('results');
+      btn.disabled = true;
+      results.innerHTML = '<p>Running tests...</p>';
+
+      const tests = [
+        {
+          name: 'Test 1: users(*)',
+          query: '*, users(*)',
+          description: 'Using table name (plural)'
+        },
+        {
+          name: 'Test 2: user(*)',
+          query: '*, user(*)',
+          description: 'Using singular (FK column minus _id)'
+        },
+        {
+          name: 'Test 3: users!doctors_user_id_fkey(*)',
+          query: '*, users!doctors_user_id_fkey(*)',
+          description: 'Explicit FK constraint name'
+        },
+        {
+          name: 'Test 4: users!inner(*)',
+          query: '*, users!inner(*)',
+          description: 'Inner join syntax'
+        },
+        {
+          name: 'Test 5: users(full_name, avatar_url, email)',
+          query: '*, users(full_name, avatar_url, email)',
+          description: 'Specific columns from users'
+        },
+        {
+          name: 'Test 6: user!doctors_user_id_fkey(*)',
+          query: '*, user!doctors_user_id_fkey(*)',
+          description: 'Singular with explicit FK'
+        },
+        {
+          name: 'Test 7: users!left(*)',
+          query: '*, users!left(*)',
+          description: 'Left join syntax'
+        }
+      ];
+
+      const testResults = [];
+
+      for (const test of tests) {
+        const result = await runTest(test);
+        testResults.push(result);
+        displayResult(result);
+      }
+
+      displaySummary(testResults);
+      btn.disabled = false;
+    };
+
+    async function runTest(test) {
+      try {
+        const { data, error } = await supabase
+          .from('doctors')
+          .select(test.query)
+          .eq('is_available', true)
+          .limit(1);
+
+        const result = {
+          name: test.name,
+          query: test.query,
+          description: test.description,
+          error: error,
+          data: data,
+          success: !error && data && data.length > 0,
+          hasJoinedData: false,
+          joinFieldName: null,
+          firstDoctor: data?.[0] || null
+        };
+
+        if (result.success && data[0]) {
+          // Check for joined user data
+          const doctor = data[0];
+          const possibleFields = ['users', 'user', 'user_profile'];
+
+          for (const field of possibleFields) {
+            if (field in doctor && doctor[field] !== null) {
+              result.hasJoinedData = true;
+              result.joinFieldName = field;
+
+              // Check if it has the expected fields
+              if (doctor[field].full_name !== undefined) {
+                result.hasFullName = true;
+              }
+              break;
+            }
+          }
+        }
+
+        return result;
+      } catch (err) {
+        return {
+          name: test.name,
+          query: test.query,
+          description: test.description,
+          error: { message: err.message },
+          success: false,
+          exception: true
+        };
+      }
+    }
+
+    function displayResult(result) {
+      const results = document.getElementById('results');
+      const div = document.createElement('div');
+
+      let className = 'test';
+      let status = '';
+
+      if (result.error) {
+        className += ' error';
+        status = '❌ ERROR';
+      } else if (result.hasJoinedData && result.hasFullName) {
+        className += ' success';
+        status = '✅ SUCCESS';
+      } else if (result.success) {
+        className += ' partial';
+        status = '⚠️ NO JOIN DATA';
+      }
+
+      div.className = className;
+
+      let html = `<h2>${result.name} - ${status}</h2>`;
+      html += `<p><strong>Query:</strong> .select('${result.query}')</p>`;
+      html += `<p><strong>Description:</strong> ${result.description}</p>`;
+
+      if (result.error) {
+        html += '<p><strong>Error:</strong></p>';
+        html += '<pre>' + JSON.stringify(result.error, null, 2) + '</pre>';
+      } else if (result.hasJoinedData) {
+        html += `<p style="color: #4ec9b0;"><strong>✓ Joined data found in field: "${result.joinFieldName}"</strong></p>`;
+        html += '<p><strong>First doctor record:</strong></p>';
+        html += '<pre>' + JSON.stringify(result.firstDoctor, null, 2) + '</pre>';
+      } else if (result.success) {
+        html += '<p style="color: #dcdcaa;"><strong>Query succeeded but no joined user data</strong></p>';
+        html += '<p><strong>Fields in response:</strong> ' + Object.keys(result.firstDoctor).join(', ') + '</p>';
+        html += '<p><strong>First doctor record:</strong></p>';
+        html += '<pre>' + JSON.stringify(result.firstDoctor, null, 2) + '</pre>';
+      }
+
+      div.innerHTML = html;
+      results.appendChild(div);
+    }
+
+    function displaySummary(testResults) {
+      const results = document.getElementById('results');
+      const div = document.createElement('div');
+      div.className = 'summary';
+
+      const working = testResults.filter(r => r.hasJoinedData && r.hasFullName);
+      const partial = testResults.filter(r => r.success && !r.hasJoinedData);
+      const errors = testResults.filter(r => r.error);
+
+      let html = '<h2>📊 SUMMARY</h2>';
+
+      if (working.length > 0) {
+        html += '<h3 style="color: #4ec9b0;">✅ WORKING SYNTAXES:</h3>';
+        working.forEach(r => {
+          html += `<p><strong>${r.name}</strong></p>`;
+          html += `<p>Query: <code>.select('${r.query}')</code></p>`;
+          html += `<p>Joined field name: <strong>${r.joinFieldName}</strong></p>`;
+          html += '<hr style="border-color: #3e3e42;">';
+        });
+
+        html += '<h3>🎯 RECOMMENDED QUERY:</h3>';
+        html += '<pre>.select(\'' + working[0].query + '\')</pre>';
+        html += '<p>This will return user data in the field: <strong>' + working[0].joinFieldName + '</strong></p>';
+      } else {
+        html += '<p style="color: #f48771;"><strong>❌ NO WORKING SYNTAX FOUND</strong></p>';
+      }
+
+      if (partial.length > 0) {
+        html += '<h3 style="color: #dcdcaa;">⚠️ QUERIES THAT SUCCEED BUT RETURN NO USER DATA:</h3>';
+        partial.forEach(r => {
+          html += `<p>${r.name}: <code>${r.query}</code></p>`;
+        });
+        html += '<p><strong>Possible causes:</strong></p>';
+        html += '<ul>';
+        html += '<li>RLS policy blocking users table</li>';
+        html += '<li>Wrong relationship alias</li>';
+        html += '<li>Missing data in database</li>';
+        html += '</ul>';
+      }
+
+      if (errors.length > 0) {
+        html += '<h3 style="color: #f48771;">❌ QUERIES THAT FAILED:</h3>';
+        errors.forEach(r => {
+          html += `<p>${r.name}: ${r.error.message}</p>`;
+        });
+      }
+
+      div.innerHTML = html;
+      results.appendChild(div);
+    }
+  </script>
+</body>
+</html>
