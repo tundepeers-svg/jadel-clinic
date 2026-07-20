@@ -58,25 +58,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user profile
-    const { error: userError } = await supabase
-      .from('users')
-      .insert({
-        id: authData.user.id,
-        email,
-        full_name,
-        role,
-      });
-
-    if (userError) {
-      console.error('User profile error:', userError);
-      // Rollback: delete the auth user
-      await supabase.auth.admin.deleteUser(authData.user.id);
-      return NextResponse.json(
-        { error: 'Failed to create user profile' },
-        { status: 500 }
-      );
-    }
+    
 
     // Create patient record if role is patient
     if (role === 'patient') {
@@ -88,8 +70,7 @@ export async function POST(request: NextRequest) {
 
       if (patientError) {
         console.error('Patient record error:', patientError);
-        // Rollback: delete user profile and auth user
-        await supabase.from('users').delete().eq('id', authData.user.id);
+        // Rollback: delete auth user (users table handled by CASCADE)
         await supabase.auth.admin.deleteUser(authData.user.id);
         return NextResponse.json(
           { error: 'Failed to create patient record' },

@@ -42,7 +42,7 @@ export default function RegisterPage() {
     try {
       await register(formData.email, formData.password, formData.full_name);
       toast.success('Account created successfully! Please check your email to verify.');
-      router.push(ROUTES.PATIENT_PORTAL);
+      router.push(ROUTES.PATIENT_DASHBOARD);
     } catch (error: any) {
       toast.error(error.message || 'Failed to create account');
     } finally {

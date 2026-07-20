@@ -133,39 +133,50 @@ setUser(data);
 
   async function register(email: string, password: string, full_name: string, role: string = 'patient') {
     try {
-      // Call server-side registration API
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name,
+            role,
+          },
         },
-        body: JSON.stringify({
-          email,
-          password,
-          full_name,
-          role,
-        }),
       });
 
-      // Parse JSON response with resilient error handling
-      let result;
-      try {
-        result = await response.json();
-      } catch (parseError) {
-        // Handle non-JSON responses (e.g., HTML error pages)
-        throw new Error(`Server returned invalid response: ${response.status} ${response.statusText}`);
+      if (error) throw error;
+
+      if (data.user) {
+        const { error: userError } = await supabase
+          .from('users')
+          .insert({
+            id: data.user.id,
+            email,
+            full_name,
+            role,
+          });
+
+        if (userError) throw userError;
+
+       if (role === 'patient') {
+  console.log("Creating patient record...");
+
+  const { data: patientData, error: patientError } = await supabase
+    .from('patients')
+    .insert({
+      user_id: data.user.id,
+    })
+    .select();
+
+  console.log("Patient insert result:", patientData);
+  console.log("Patient insert error:", patientError);
+
+  if (patientError) throw patientError;
+}
+
+        await fetchUserData(data.user.id);
+        router.refresh();
       }
-
-      // Check if request failed
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to register');
-      }
-
-      // Automatically log in the user
-      await login(email, password);
-
-      // Refresh router to update server components
-      router.refresh();
     } catch (error: any) {
       throw new Error(error.message || 'Failed to register');
     }
